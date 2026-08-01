@@ -2,6 +2,9 @@
 
 Read Ethereum state **without trusting the RPC that served it**, from inside an OutLayer TEE.
 
+[Run it in the playground](https://outlayer.fastnear.com/playground#ethereum-proof) |
+[Documentation](https://outlayer.fastnear.com/docs/examples#eth-proof)
+
 ## The problem
 
 `eth_call` is a computation the node performs on your behalf. It returns a number and there is
@@ -90,6 +93,7 @@ anyone, so the answer is auditable after the fact rather than taken on faith.
 | Field | Default | Meaning |
 |---|---|---|
 | `proxy` | required | Chainlink feed address — the one their docs list |
+| `pair` | — | Human label, e.g. `ETH/USD`, echoed back so the number has a unit. A label, not a proven fact: the feed carries no name on chain |
 | `aggregator` | — | Skip the proxy hop. Only for feeds without a proxy; see below |
 | `decimals` | `8` | Divisor for the human-readable `price` |
 | `rpcs` | 3 public endpoints | Endpoints to poll. Use operators that could actually disagree |

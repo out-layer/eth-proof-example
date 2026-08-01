@@ -159,6 +159,9 @@ pub fn block_number_behind_head(rpcs: &[String], behind: u64) -> Result<u64, Str
 pub struct SlotProof {
     pub value: Vec<u8>,
     pub storage_hash: [u8; 32],
+    /// Trie nodes actually hashed and checked for this slot, account path plus storage path.
+    /// Surfaced because it is the concrete measure of what was verified rather than believed.
+    pub nodes_checked: usize,
 }
 
 /// Fetch and verify one storage slot against an already-agreed state root.
@@ -247,7 +250,7 @@ fn verify_account_and_slot(
         None => Vec::new(),
     };
 
-    Ok(SlotProof { value, storage_hash })
+    Ok(SlotProof { value, storage_hash, nodes_checked: account_proof.len() + nodes.len() })
 }
 
 fn decode_nodes(value: &Value, field: &str) -> Result<Vec<Vec<u8>>, String> {

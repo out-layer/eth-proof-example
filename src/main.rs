@@ -50,6 +50,10 @@ struct Input {
     /// hardcoding it means an aggregator rotation silently serves a frozen price.
     #[serde(default)]
     aggregator: Option<String>,
+    /// Human label for the feed, e.g. "ETH/USD". Echoed back so the number has a unit.
+    /// It is a label, not a proven fact — the on-chain feed carries no name.
+    #[serde(default)]
+    pair: Option<String>,
     #[serde(default)]
     decimals: Option<u32>,
     #[serde(default)]
@@ -82,11 +86,33 @@ struct Evidence {
     rejected: Vec<String>,
 }
 
+/// A plain-language summary of what the run established, so the numbers below it are readable
+/// without knowing what a Merkle-Patricia trie is.
+#[derive(Serialize)]
+struct Verified {
+    /// One line: what is now known, and on whose word the rest still rests.
+    summary: String,
+    /// Storage slots proven, each with its own account + storage path.
+    storage_proofs: usize,
+    /// Trie nodes hashed and checked. Every one had to match the hash its parent published.
+    trie_nodes_checked: usize,
+    /// How many independent providers returned the identical header the proofs were checked against.
+    rpcs_agreeing: String,
+    /// Check the block yourself; the price is inside that block's state.
+    explorer: String,
+    /// The boundary of the claim, stated where nobody can miss it.
+    not_proven: String,
+}
+
 #[derive(Serialize)]
 struct Output {
     success: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pair: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     price: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    verified: Option<Verified>,
     #[serde(skip_serializing_if = "Option::is_none")]
     answer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -140,13 +166,13 @@ fn run(input: Input) -> Result<Output, String> {
 
     // 2. Prove which aggregator the proxy currently points at. Taking this from configuration
     //    would leave one unverified link in a chain whose whole point is that there are none.
-    let (aggregator, phase_id) = match &input.aggregator {
-        Some(explicit) => (explicit.clone(), None),
+    let (aggregator, phase_id, phase_nodes) = match &input.aggregator {
+        Some(explicit) => (explicit.clone(), None, 0),
         None => {
             let phase_slot = chainlink::current_phase_slot();
             let proven = rpc::proven_slot(&rpcs, &input.proxy, &phase_slot, &header)?;
             let (addr, phase) = chainlink::aggregator_from_current_phase(&proven.value)?;
-            (addr, Some(phase))
+            (addr, Some(phase), proven.nodes_checked)
         }
     };
 
@@ -163,6 +189,9 @@ fn run(input: Input) -> Result<Output, String> {
 
     let decimals = input.decimals.unwrap_or(8);
     let price = transmission.answer as f64 / 10f64.powi(decimals as i32);
+    let pair = input.pair.clone().unwrap_or_else(|| "price".to_string());
+    let nodes = phase_nodes + hot.nodes_checked + proven.nodes_checked;
+    let proofs = if phase_nodes > 0 { 3 } else { 2 };
 
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -179,7 +208,23 @@ fn run(input: Input) -> Result<Output, String> {
 
     Ok(Output {
         success: true,
+        pair: input.pair.clone(),
         price: Some(price),
+        verified: Some(Verified {
+            summary: format!(
+                "{} = {} is the value Chainlink had stored on Ethereum at block {}. \
+                 Read out of the contract's storage with a Merkle proof and re-checked here, \
+                 so no node in the path could have altered it.",
+                pair, price, header.number
+            ),
+            storage_proofs: proofs,
+            trie_nodes_checked: nodes,
+            rpcs_agreeing: format!("{} of {}", header.agreed_by.len(), rpcs.len()),
+            explorer: format!("https://etherscan.io/block/{}", header.number),
+            not_proven: "That this is the right price. Chainlink published it; the proof shows \
+                         it was delivered unaltered, not that it is accurate."
+                .to_string(),
+        }),
         answer: Some(transmission.answer.to_string()),
         updated_at: Some(transmission.updated_at),
         observed_at: Some(transmission.observed_at),
@@ -205,6 +250,8 @@ fn fail(message: String) -> Output {
     Output {
         success: false,
         price: None,
+        pair: None,
+        verified: None,
         answer: None,
         updated_at: None,
         observed_at: None,
