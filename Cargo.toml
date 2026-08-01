@@ -1,0 +1,25 @@
+[package]
+name = "eth-proof-example"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Read Ethereum state without trusting the RPC that served it"
+
+[[bin]]
+name = "eth-proof-example"
+path = "src/main.rs"
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wasi-http-client = "0.2"
+
+# Merkle-Patricia proof verification needs exactly two primitives: keccak256 to hash
+# nodes, and RLP to decode them. Both are pure Rust and build for wasm32-wasip2.
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+rlp = "0.5"
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
