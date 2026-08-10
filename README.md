@@ -2,8 +2,8 @@
 
 Read Ethereum state **without trusting the RPC that served it**, from inside an OutLayer TEE.
 
-[Run it in the playground](https://outlayer.fastnear.com/playground#ethereum-state-proof) |
-[Documentation](https://outlayer.fastnear.com/docs/examples#eth-proof)
+[Run it in the playground](https://app.outlayer.ai/playground#ethereum-state-proof) |
+[Documentation](https://app.outlayer.ai/docs/examples#eth-proof)
 
 ## The problem
 
