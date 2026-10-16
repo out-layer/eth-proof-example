@@ -149,11 +149,16 @@ plausible wrong number.
 ## Running on OutLayer
 
 ```bash
+outlayer upload target/wasm32-wasip2/release/eth-proof-example.wasm
+# prints SHA256 and: FastFS URL: https://test.fastfs.io/you.testnet/outlayer.testnet/<sha256>.wasm
+outlayer deploy eth-proof-example <FastFS URL>
+```
+
+```bash
 near call outlayer.testnet request_execution '{
-  "source": { "GitHub": {
-    "repo": "github.com/out-layer/eth-proof-example",
-    "commit": "main",
-    "build_target": "wasm32-wasip2"
+  "source": { "Project": {
+    "project_id": "you.testnet/eth-proof-example",
+    "version_key": null
   }},
   "resource_limits": { "max_instructions": 10000000000, "max_memory_mb": 128, "max_execution_seconds": 60 },
   "input_data": "{\"proxy\":\"0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419\"}",
